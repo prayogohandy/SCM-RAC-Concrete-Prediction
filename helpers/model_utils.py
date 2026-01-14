@@ -1,12 +1,12 @@
-import os, pickle
+import os, joblib
 import streamlit as st
 from config import model_folder, model_param_keys, model_abbreviations
 
 def load_model():
-    model_path = os.path.join(model_folder, f"final_chain_model.pkl")
+    model_path = os.path.join(model_folder, f"final_chain_model_joblib.pkl")
     if os.path.exists(model_path):
         with open(model_path, "rb") as f:
-            model = pickle.load(f)
+            model = joblib.load(f)
         st.session_state.model = model
         return model
     else:
@@ -14,10 +14,10 @@ def load_model():
         return None
 
 def load_shap_explainer():
-    explainer_path = os.path.join(model_folder, f"shap_explainer.pkl")
+    explainer_path = os.path.join(model_folder, f"shap_explainer_joblib.pkl")
     if os.path.exists(explainer_path):
         with open(explainer_path, "rb") as f:
-            shap_explainer = pickle.load(f)
+            shap_explainer = joblib.load(f)
         st.session_state.shap_explainer = shap_explainer
         return shap_explainer
     else:
