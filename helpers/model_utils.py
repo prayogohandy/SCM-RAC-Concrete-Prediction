@@ -7,11 +7,21 @@ def load_model():
     if os.path.exists(model_path):
         with open(model_path, "rb") as f:
             model = pickle.load(f)
-        st.session_state.model_loaded = True
         st.session_state.model = model
         return model
     else:
         st.error(f"Model file not found: {model_path}")
+        return None
+
+def load_shap_explainer():
+    explainer_path = os.path.join(model_folder, f"shap_explainer.pkl")
+    if os.path.exists(explainer_path):
+        with open(explainer_path, "rb") as f:
+            shap_explainer = pickle.load(f)
+        st.session_state.shap_explainer = shap_explainer
+        return shap_explainer
+    else:
+        st.error(f"SHAP explainer file not found: {explainer_path}")
         return None
 
 def extract_model_params(model):

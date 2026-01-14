@@ -6,6 +6,7 @@ def compute_derived_features(df: pd.DataFrame) -> pd.DataFrame:
     # =========================
     df['SCM Content'] = df['FA'] + df['SF'] + df['GGBFS'] + df['CC']
     df['Binder Content'] = df['C'] + df['SCM Content']
+    df['Binder Content'] = df['Binder Content'].replace(0, 1e-6)
     df['W/B Ratio'] = df['W'] / df['Binder Content']
     df['SCM RR'] = df['SCM Content'] / df['Binder Content']
     df['Cement%'] = df['C'] / df['Binder Content']

@@ -7,6 +7,7 @@ from sklearn.model_selection import KFold
 from functions import process_array
 from collections import OrderedDict
 from config import input_cols
+import shap
 
 # Regression
 class L0BaggingModelRegressor:
@@ -118,7 +119,7 @@ class HybridChainPredictor:
     - Independent standalone outputs
     """
 
-    def __init__(self, chain_models, standalone_models=None, no_fe_outputs=[]):
+    def __init__(self, chain_models, standalone_models=None, model_cols={}):
         if not isinstance(chain_models, OrderedDict):
             raise TypeError("chain_models must be an OrderedDict in chaining order.")
         if len(chain_models) == 0:
@@ -126,7 +127,7 @@ class HybridChainPredictor:
 
         self.chain_models = chain_models
         self.standalone_models = standalone_models or {}
-        self.no_fe_outputs = no_fe_outputs
+        self.model_cols = model_cols
 
     def predict(self, X):
         # Preserve index if DataFrame
@@ -147,12 +148,142 @@ class HybridChainPredictor:
 
         # ---- Standalone predictions ----
         for out, model in self.standalone_models.items():
-            if out in self.no_fe_outputs:
-                # Predict without augmented features
-                num_cols = len(input_cols)
-                preds[out] = np.asarray(model.predict(X[:,:num_cols])).reshape(-1) # only take first num_cols columns
+            if out in self.model_cols:
+                X_input = X[:, self.model_cols[out]]
             else:
-                # Predict with augmented features
-                preds[out] = np.asarray(model.predict(X)).reshape(-1)
+                X_input = X
+            preds[out] = np.asarray(model.predict(X_input)).reshape(-1)
 
         return preds
+
+class HybridChainSHAPExplainer:
+    """
+    SHAP explainer for HybridChainPredictor
+    Supports:
+    - Chained models (with augmented inputs)
+    - Standalone models (with their own feature subsets)
+    """
+
+    def __init__(self, predictor, background_X, input_names):
+        if isinstance(background_X, pd.DataFrame):
+            background_X = background_X.values
+        else:
+            background_X = np.asarray(background_X)
+
+        self.predictor = predictor
+        self.background_X = background_X
+        self.input_names = input_names
+
+        self.X_inputs = {}        # X used per output
+        self.feature_names = {}   # feature names per output
+        self.explainers = {}      # SHAP explainers
+        self.global_shap = {}     # SHAP values
+
+        self._prepare_chain_shap()
+        self._prepare_standalone_shap()
+
+    # ------------------------------------------------------------------
+    # Chain models SHAP
+    # ------------------------------------------------------------------
+    def _prepare_chain_shap(self):
+        X_aug = self.background_X.copy()
+        feature_names_aug = self.input_names.copy()
+        for out, bagged_model in self.predictor.chain_models.items():
+            print(f"Preparing SHAP for chained output: {out}")
+            print(f"  Input shape: {X_aug.shape}")
+            self.X_inputs[out] = X_aug.copy()
+
+            model = bagged_model.models[0] # take the first fold bagged model for SHAP
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_aug)
+
+            self.explainers[out] = explainer
+            self.global_shap[out] = shap_values
+            self.feature_names[out] = feature_names_aug
+
+            # augment input
+            y_pred = np.asarray(bagged_model.predict(X_aug)).reshape(-1)
+            X_aug = np.hstack([X_aug, y_pred[:, None]])
+            feature_names_aug = feature_names_aug + [f"Predicted {out}"]
+
+    # ------------------------------------------------------------------
+    # Standalone models SHAP
+    # ------------------------------------------------------------------
+    def _prepare_standalone_shap(self):
+        for out, bagged_model in self.predictor.standalone_models.items():
+            print(f"Preparing SHAP for standalone output: {out}")
+
+            # Background input selection
+            feature_names = self.input_names.copy()
+            if out in self.predictor.model_cols:
+                cols = self.predictor.model_cols[out]
+                X_input = self.background_X[:, cols]
+                feature_names = [self.input_names[c] for c in cols]
+            else:
+                X_input = self.background_X
+
+            model = bagged_model.models[0] # take the first fold bagged model for SHAP
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_input)
+
+            self.X_inputs[out] = X_input
+            self.explainers[out] = explainer
+            self.feature_names[out] = feature_names
+            self.global_shap[out] = shap_values
+
+    # ------------------------------------------------------------------
+    # Global SHAP access
+    # ------------------------------------------------------------------
+    def get_global_shap(self, output):
+        return self.global_shap[output], self.X_inputs[output], self.feature_names[output]
+
+    # ------------------------------------------------------------------
+    # Local explanation
+    # ------------------------------------------------------------------
+    def explain_local_all(self, X_single):
+        """
+        Compute local SHAP explanations for ALL outputs.
+        
+        Returns
+        -------
+        explanations : dict
+            {output_name: shap.Explanation}
+        """
+
+        if isinstance(X_single, pd.DataFrame):
+            X_single = X_single.values
+        else:
+            X_single = np.asarray(X_single)
+
+        if len(X_single) != 1:
+            raise ValueError("X_single must contain exactly one sample")
+
+        explanations = {}
+
+        # ---------- Chained outputs ----------
+        X_aug = X_single.copy()
+
+        for out, bagged_model in self.predictor.chain_models.items():
+            explainer = self.explainers[out]
+
+            X_aug_df = pd.DataFrame(X_aug, columns=self.feature_names[out])
+            explanations[out] = explainer(X_aug_df)
+
+            # propagate prediction downstream
+            y_pred = np.asarray(bagged_model.predict(X_aug)).reshape(-1)
+            X_aug = np.hstack([X_aug, y_pred[:, None]])
+
+        # ---------- Standalone outputs ----------
+        for out, bagged_model in self.predictor.standalone_models.items():
+            explainer = self.explainers[out]
+
+            if out in self.predictor.model_cols:
+                cols = self.predictor.model_cols[out]
+                X_input = X_single[:, cols]
+            else:
+                X_input = X_single
+
+            X_input_df = pd.DataFrame(X_input, columns=self.feature_names[out])
+            explanations[out] = explainer(X_input_df)
+
+        return explanations

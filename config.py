@@ -74,6 +74,22 @@ model_param_keys = {
     "Ridge": ["alpha", "fit_intercept"],
 }
 
+rename_input = {
+    # Input features
+    "C": "Cement (kg/m³)",
+    "W": "Water (kg/m³)",
+    "CA": "Coarse Aggregate (kg/m³)",
+    "RCA": "Recycled Coarse Aggregate (kg/m³)",
+    "FAg": "Fine Aggregate (kg/m³)",
+    "SP": "Superplasticizer (kg/m³)",
+    "FA": "Fly Ash (kg/m³)",
+    "SF": "Silica Fume (kg/m³)",
+    "GGBFS": "Blast Furnace Slag (kg/m³)",
+    "CC": "Calcined Clay (kg/m³)"
+}
+
+reverse_rename_input = {v: k for k, v in rename_input.items()}
+
 rename_dict = {
     # Input features
     "C": r'$\mathrm{Cement}$ [kg/m$^3$]',
@@ -115,9 +131,22 @@ rename_dict = {
     "FS":  "Flexural strength (MPa)",
     "E":   "Elastic modulus (GPa)",
     "SL":  "Slump (cm)",
-    "CP":  "Chloride permeability (Coulomb) 28d",
-    "DS":  "Drying shrinkage (με) 28d",
+    "CP":  "Chloride permeability (Coulomb)",
+    "DS":  "Drying shrinkage (με)",
 }
+
+reverse_rename_dict = {v: k for k, v in rename_dict.items()}
+
+OUTPUT_FORMAT = {
+    "CS": {"unit": "MPa", "decimals": 2},
+    "TS": {"unit": "MPa", "decimals": 2},
+    "FS": {"unit": "MPa", "decimals": 2},
+    "E":  {"unit": "GPa", "decimals": 2},
+    "SL": {"unit": "cm",  "decimals": 1},
+    "DS": {"unit": "µε",  "decimals": 0},
+    "CP": {"unit": "C",   "decimals": 0},
+}
+
 
 input_cols = ['Cement (kg/m3)', 'Water (kg/m3)', 'Coarse aggregate (kg/m3)',
             'Recycled coarse aggregate (kg/m3)', 'Fine aggregate (kg/m3)', 
@@ -127,3 +156,5 @@ input_cols_fe = ['SCM Content', 'Binder Content', 'W/B Ratio', 'SCM RR', 'Cement
             'FA%', 'SF%', 'GGBFS%', 'CC%', 
             'Coarse%', 'Total Aggregate Content (kg/m3)', 'RCA RR',
             'Sp/B Ratio', 'Sp/W Ratio', 'P/Agg Ratio', 'B/Agg Ratio', 'W/S Ratio']
+
+input_cols_all = input_cols + input_cols_fe
