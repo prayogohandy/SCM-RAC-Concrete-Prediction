@@ -35,6 +35,9 @@ st.title(app_title)
 raw_features = list(feature_bounds.keys())
 input_data = {}
 
+if "history" not in st.session_state:
+    st.session_state.history = pd.DataFrame(columns=raw_features)
+
 # ------------------ Tabs ------------------
 tabs = st.tabs(["Concrete Details", "SHAP Analysis", "Scenario Analysis", "History"])
 
