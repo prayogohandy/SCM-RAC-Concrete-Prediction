@@ -2,7 +2,7 @@ streamlit
 numpy
 pandas
 matplotlib
-plotly
+plotly==5.24.1
 joblib==1.5.2
 
 scikit-learn==1.5.1
