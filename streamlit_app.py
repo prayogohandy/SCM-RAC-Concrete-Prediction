@@ -21,7 +21,7 @@ warnings.filterwarnings(
 
 from ensemble import L0BaggingModelRegressor, HybridChainPredictor, HybridChainSHAPExplainer
 
-app_title = "Multi-Output Concrete Predictor"
+app_title = "Cross-Output Information Transfer - Concrete Properties Predictor"
 
 # ------------------ App Title ------------------
 st.set_page_config(
@@ -34,17 +34,6 @@ st.title(app_title)
 
 raw_features = list(feature_bounds.keys())
 input_data = {}
-
-# Initialize session state for prediction history
-if "history" not in st.session_state:
-    st.session_state.history = pd.DataFrame(columns=raw_features + ['Prediction'])
-
-# ------------------ Prediction ------------------
-# Initialize session state
-if 'model_loaded' not in st.session_state:
-    st.session_state.model_loaded = False
-    st.session_state.model = None
-    st.session_state.current_model_info = None
 
 # ------------------ Tabs ------------------
 tabs = st.tabs(["Concrete Details", "SHAP Analysis", "Scenario Analysis", "History"])
@@ -159,14 +148,14 @@ with st.sidebar:
                 "Property": output_name,
                 "Prediction": round(value, 2),
                 "Unit": OUTPUT_FORMAT[output_name]["unit"],
-                "Display": f"{value:.{decimal}f} {unit}"
+                "Value": f"{value:.{decimal}f} {unit}"
             })
 
             # Update prediction history
             new_row[output_name] = value
             
         df_pred = pd.DataFrame(rows)
-        st.sidebar.table(df_pred[["Property", "Display"]])
+        st.sidebar.table(df_pred[["Property", "Value"]])
         st.sidebar.markdown(f"**Time:** {elapsed:.2f} seconds")
 
         st.session_state.history = pd.concat(
