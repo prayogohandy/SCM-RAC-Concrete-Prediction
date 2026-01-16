@@ -111,7 +111,7 @@ with tabs[0]:
         title="Binder Composition by Weight",
         color=binder_components
     )
-    columns[0].plotly_chart(fig)
+    columns[0].plotly_chart(fig, use_container_width=True)
     agg_components = ['CA', 'RCA', 'FAg']
     agg_values = [input_data[f] for f in agg_components]
 
@@ -121,9 +121,7 @@ with tabs[0]:
         title="Aggregate Composition by Weight",
         color=agg_components
     )
-    columns[1].plotly_chart(fig)
-
-
+    columns[1].plotly_chart(fig, use_container_width=True)
 
 # ------------------ Sidebar Model Selection ------------------
 st.sidebar.header("Prediction")
