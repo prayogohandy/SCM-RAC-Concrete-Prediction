@@ -28,6 +28,7 @@ st.set_page_config(
     page_title=app_title,
     page_icon="🤖",
     initial_sidebar_state="expanded",
+    layout="wide",
 )
 
 st.title(app_title)
